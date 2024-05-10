@@ -1,45 +1,51 @@
 package bot
 
 import (
-	"errors"
 	"fmt"
-	"strconv"
+	"time"
 
+	"github.com/Crampustallin/discord_bot/internal/bot/tools"
 	"github.com/bwmarrin/discordgo"
-	"github.com/pion/rtp"
-	"github.com/pion/webrtc/v3/pkg/media/oggwriter"
 )
 
-func createPionRtpPacket(p *discordgo.Packet) *rtp.Packet {
-	return &rtp.Packet{
-		Header: rtp.Header{
-			Version:        2,
-			PayloadType:    0x78,
-			SequenceNumber: p.Sequence,
-			Timestamp:      p.Timestamp,
-			SSRC:           p.SSRC,
-		},
-		Payload: p.Opus,
+func (b *Bot) channelCreateHandler(s *discordgo.Session, cc *discordgo.ChannelCreate) {
+	fmt.Println("=======here+++======")
+	if b.connected {
+		return
 	}
+	b.vc = b.join(cc.GuildID, cc.ID)
 }
 
-func handleConversation(chanId int, c chan *discordgo.Packet) (string, error) {
-	file, err := oggwriter.New(fmt.Sprintf("%d.ogg", chanId), 48000, 2)
+func (b *Bot) voiceStateUpdateHandler(s *discordgo.Session, c *discordgo.VoiceStateUpdate) {
+	if b.connected {
+		return
+	}
+	fmt.Println(b.connected)
+	b.connected = true
+	b.vc = b.join(c.GuildID, c.VoiceState.ChannelID)
+}
+
+func (b *Bot) join(guildId, channelId string) *discordgo.VoiceConnection {
+	v, err := b.session.ChannelVoiceJoin(guildId, channelId, true, false)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("Failed to create file %d.ogg, giving up on recording: %v\n", chanId, err.Error()))
+		return nil
 	}
-
-	defer file.Close()
-
-	for p := range c {
-		rPacket := createPionRtpPacket(p)
-		if err := file.WriteRTP(rPacket); err != nil {
-			return "", errors.New(fmt.Sprintf("Failed to create file %d.ogg, giving up on recording: %v\n", chanId, err.Error()))
-		}
+	fmt.Println("Joined the channel: " + channelId)
+	go func() {
+		time.Sleep(10 * time.Second)
+		b.disconnect()
+	}()
+	fileName, err := tools.HandleConversation(channelId, v.OpusRecv)
+	if err != nil {
+		return nil
 	}
-	return strconv.Itoa(chanId), nil
+	b.FileNameSend <- fileName
+	return v
 }
 
-func VoiceStateUpdateHandler(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) {
-	// TODO: make user joined or created vc event handler
+func (b *Bot) disconnect() {
+	fmt.Println("Disconnecting from " + b.vc.ChannelID)
+	close(b.vc.OpusRecv)
+	b.vc.Disconnect()
+	b.connected = false
 }
