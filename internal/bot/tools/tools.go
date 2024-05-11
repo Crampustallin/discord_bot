@@ -24,8 +24,8 @@ func CreatePionRtpPacket(p *discordgo.Packet) *rtp.Packet {
 }
 
 func HandleConversation(chanId string, c chan *discordgo.Packet) (string, error) {
-	fileName := chanId + time.Now().String()
-	file, err := oggwriter.New(fmt.Sprintf("%s.ogg", fileName), 48000, 2)
+	fileName := chanId + time.Now().Format("20060102150405") + ".ogg"
+	file, err := oggwriter.New(fmt.Sprintf(fileName), 48000, 2)
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("Failed to create file %s.ogg, giving up on recording: %v\n", fileName, err.Error()))
 	}

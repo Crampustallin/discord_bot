@@ -29,27 +29,18 @@ func main() {
 	aws := aws.NewAws(awsReg, bucketName)
 
 	token := checkEnv(DISCORD_BOT_TOKEN_VAR_NAME)
-	bot := bot.NewBot(token)
+	bot := bot.NewBotWithStorage(token, aws)
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 
 	go func() { bot.Start() }()
 
-	for {
-		select {
-		case file := <-bot.FileNameSend:
-			err := aws.Upload(file)
-			if err != nil {
-				fmt.Println(err)
-			}
-		case <-signalChan:
-			fmt.Println("exiting")
-			bot.Close()
-			return
-		}
-	}
+	<-signalChan
 
+	fmt.Println("exiting")
+	bot.Close()
+	return
 }
 
 func checkEnv(envName string) string {
