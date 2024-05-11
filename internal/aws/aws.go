@@ -2,6 +2,7 @@ package aws
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -31,7 +32,8 @@ func NewAws(region, bucket string) *Aws {
 }
 
 func (a *Aws) Upload(fileName string) error {
-	file, err := os.Open(fileName)
+	file, err := os.Open(fileName + ".ogg")
+	fmt.Println(fileName)
 	if err != nil {
 		return err
 	}

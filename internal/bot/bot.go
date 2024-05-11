@@ -19,7 +19,8 @@ func NewBot(token string) *Bot {
 	if err != nil {
 		panic(err)
 	}
-	return &Bot{session: s}
+	fileNameSend := make(chan string)
+	return &Bot{session: s, FileNameSend: fileNameSend}
 }
 
 func (b *Bot) Start() {
@@ -36,4 +37,5 @@ func (b *Bot) Start() {
 
 func (b *Bot) Close() {
 	b.session.Close()
+	close(b.FileNameSend)
 }
